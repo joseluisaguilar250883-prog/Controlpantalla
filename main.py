@@ -187,15 +187,16 @@ def api_qr():
 
 @app.route("/")
 def home():
+    base_url = request.host_url.rstrip("/")
     data = load_data()
     filas = "".join(
         f"<li>{s.get('nombre', sid)}: "
-        f"<a href='/pantalla/{sid}'>/pantalla/{sid}</a></li>"
+        f"<a href='{base_url}/pantalla/{sid}'>{base_url}/pantalla/{sid}</a></li>"
         for sid, s in data["screens"].items()
     )
     return (
         f"<h2>Catalogo Digital</h2>"
-        f"<p>Control (celular): <a href='/control'>/control</a></p>"
+        f"<p>Control (celular): <a href='{base_url}/control'>{base_url}/control</a></p>"
         f"<p>Pantallas:</p><ul>{filas}</ul>"
     )
 
