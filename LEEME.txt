@@ -1,0 +1,99 @@
+CATÁLOGO DIGITAL — PROTOTIPO
+==============================
+
+QUÉ ES
+------
+Un servidor local con dos direcciones:
+- /pantalla  -> se abre en la Smart TV / navegador del negocio (solo muestra, carrusel)
+- /control   -> se abre desde el celular (agregar productos, precios, fondo, tiempo)
+
+Ambas viven en la MISMA computadora/servidor y la MISMA IP, solo cambia la ruta.
+
+CÓMO CORRERLO
+-------------
+1. Necesitas Python 3 instalado en la computadora/mini-PC que va a estar
+   conectada en la misma red Wi-Fi que la Smart TV y el celular.
+
+2. Instala las dependencias:
+   pip install -r requirements.txt
+
+3. Corre el servidor:
+   python main.py
+
+4. En la terminal va a aparecer algo así:
+   Pantalla (TV):     http://192.168.1.50:5000/pantalla
+   Control (celular):  http://192.168.1.50:5000/control
+
+   Esa IP (192.168.1.50 en el ejemplo) es la de la computadora donde corre
+   el programa. Todos los dispositivos deben estar en la MISMA red Wi-Fi.
+
+5. En la Smart TV, abre el navegador y entra a la URL de "Pantalla" en
+   pantalla completa.
+
+6. En tu celular, abre la URL de "Control" y empieza a subir el fondo
+   (el que diseñes en Canva) y a agregar productos.
+
+NUEVO EN ESTA VERSIÓN (v4)
+----------------------------
+- Código QR opcional en la pantalla (switch "Mostrar código QR" en
+  Ajustes). Al escanearlo, el cliente ve en su celular una página
+  simple con todos los productos activos y sus precios.
+- Plantillas de fondo listas (Sólido, Diagonal, Puntos, Líneas) en la
+  sección de fondo, para quien no quiera diseñar nada en Canva. Usan
+  el color de acento que elijas.
+- requirements.txt ahora incluye 'qrcode' y 'Pillow' (para el QR).
+  Necesitas volver a correr: pip install -r requirements.txt
+
+NUEVO EN ESTA VERSIÓN (v3)
+----------------------------
+- Se corrigió el bug donde el precio desaparecía si la descripción era
+  larga (la caja ahora usa un layout que siempre respeta título +
+  descripción + imagen + precio, sin cortar nada).
+- Las cajas ahora se ven más parecidas a tu diseño de referencia: título
+  arriba en negro, descripción en cinta roja, foto grande llenando el
+  recuadro, precio grande abajo.
+- Al agregar/editar un producto puedes elegir:
+    * "Tal y como la subo" -> la foto llena todo el recuadro (recorta
+      bordes si no coincide la proporción, como en tu ejemplo de Duarte).
+    * "Recortar fondo automáticamente (IA)" -> deja solo el producto,
+      sin fondo. Para que esta opción funcione de verdad necesitas
+      instalar una librería extra (ver abajo); si no la instalas, el
+      programa avisa y usa la imagen normal en su lugar.
+
+RECORTE AUTOMÁTICO DE FONDO (opcional)
+----------------------------------------
+Esta función usa una librería de IA llamada "rembg" que NO viene
+instalada por default porque es pesada. Para activarla:
+
+   pip install -r requirements-recorte.txt
+
+La primera vez que la uses, descarga un modelo de IA (necesita
+internet). Si no la instalas, todo lo demás de la app funciona igual,
+solo que la opción de recorte usará la imagen normal.
+
+ANTERIOR
+- Puedes tener VARIAS pantallas (ej. "Entrada", "Caja"), cada una con su
+  propio fondo, productos y velocidad. Se elige arriba del panel de control.
+  Cada pantalla tiene su propia URL: /pantalla/<id>
+- Puedes EDITAR nombre, descripción y precios de un producto ya creado.
+- Puedes PAUSAR un producto sin borrarlo (no sale en la TV pero se queda
+  guardado).
+- Puedes REORDENAR productos con las flechas ▲ ▼.
+- Puedes elegir entre 2 LAYOUTS: "franja abajo con cajas chicas" o
+  "pocas cajas grandes".
+- Hay una VISTA PREVIA en vivo dentro del panel de control.
+- Puedes poner un PIN para proteger el panel de control (sección
+  "Seguridad"). Si lo dejas vacío, no pide nada.
+
+NOTAS
+-----
+- Esto sigue siendo un prototipo para probar la idea, pensado para
+  correr en la red local del negocio. Para venderlo a varios negocios
+  de verdad (cuentas separadas por cliente, nube en vez de red local,
+  dominio propio, cobros) se necesita otra fase. Podemos platicarlo
+  cuando quieras seguir.
+- El PIN es una protección sencilla, no un sistema de usuarios; sirve
+  para que no cualquiera en el Wi-Fi del negocio entre a cambiar precios.
+- Las imágenes que subas se guardan en static/uploads/
+- Los datos (pantallas, productos, precios, ajustes, PIN) se guardan en
+  data.json

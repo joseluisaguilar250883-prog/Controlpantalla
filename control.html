@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Control</title>
+<style>
+  :root { --rojo:#c81414; --neg:#111; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Arial, sans-serif; background:#f2f2f2; color:#222; padding-bottom:40px; }
+  header { background:var(--neg); color:#fff; padding:16px; text-align:center; }
+  header h1 { font-size:18px; margin:0; }
+  section { background:#fff; margin:14px; padding:14px; border-radius:10px; box-shadow:0 1px 4px rgba(0,0,0,.1); }
+  section h2 { font-size:15px; margin:0 0 10px; color:var(--rojo); }
+  label { display:block; font-size:13px; margin:8px 0 4px; color:#555; }
+  input[type=text], input[type=number], input[type=password], textarea, select {
+    width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; font-size:14px;
+  }
+  textarea { resize:vertical; min-height:50px; }
+  input[type=file] { width:100%; margin-top:4px; }
+  button {
+    background:var(--rojo); color:#fff; border:none; padding:10px 14px; border-radius:6px;
+    font-size:14px; margin-top:10px; cursor:pointer;
+  }
+  button.secundario { background:#555; }
+  button.peligro { background:#333; }
+  button.chica { padding:6px 8px; font-size:12px; margin:0; }
+  .fila-precio { display:flex; gap:6px; margin-top:6px; align-items:center; }
+  .fila-precio input { flex:1; }
+  .fila-precio button { margin:0; padding:8px 10px; }
+  .producto {
+    display:flex; gap:10px; border:1px solid #eee; border-radius:8px; padding:8px; margin-top:10px; align-items:center;
+  }
+  .producto.inactivo { opacity:.45; }
+  .producto img { width:56px; height:56px; object-fit:cover; border-radius:6px; background:#eee; }
+  .producto .info { flex:1; }
+  .producto .info b { display:block; font-size:14px; }
+  .producto .info span { font-size:12px; color:#666; }
+  .producto .acciones { display:flex; flex-direction:column; gap:4px; }
+  .producto .orden { display:flex; flex-direction:column; gap:2px; }
+  #estado { font-size:12px; color:#888; text-align:center; margin-top:6px; }
+  #login {
+    position:fixed; inset:0; background:#111; display:flex; align-items:center; justify-content:center;
+    flex-direction:column; z-index:50; color:#fff;
+  }
+  #login input { width:200px; text-align:center; font-size:20px; }
+  .preview-wrap { width:100%; aspect-ratio:16/9; overflow:hidden; border-radius:8px; border:2px solid #333; background:#000; position:relative; }
+  .preview-wrap iframe { width:400%; height:400%; border:0; transform:scale(0.25); transform-origin:top left; }
+  .screens-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .screens-row select { flex:1; }
+</style>
+</head>
+<body>
+
+<div id="login" style="display:none;">
+  <h2>Ingresa el PIN</h2>
+  <input type="password" id="pinInput" maxlength="12">
+  <button onclick="intentarLogin()">Entrar</button>
+  <div id="loginError" style="color:#f66; font-size:13px; margin-top:8px;"></div>
+</div>
+
+<header><h1>Panel de Control — Catálogo Digital</h1></header>
+
+<section>
+  <h2>Pantalla que estás editando</h2>
+  <div class="screens-row">
+    <select id="selectorPantallas" onchange="cambiarPantalla()"></select>
+    <button class="chica" onclick="crearPantalla()">+ Nueva</button>
+    <button class="chica peligro" onclick="borrarPantallaActual()">Borrar</button>
+  </div>
+  <label>Nombre de esta pantalla</label>
+  <input type="text" id="nombrePantalla">
+  <button onclick="guardarNombrePantalla()">Guardar nombre</button>
+  <label>Link para abrir en la TV</label>
+  <div class="screens-row">
+    <input type="text" id="linkPantalla" readonly style="font-size:12px;">
+    <button class="chica" onclick="copiarLink()">Copiar</button>
+  </div>
+</section>
+
+<section>
+  <h2>Vista previa en vivo</h2>
+  <div class="preview-wrap"><iframe id="previewFrame"></iframe></div>
+</section>
+
+<section>
+  <h2>Fondo de la pantalla</h2>
+  <label>Sube tu diseño de fondo — imagen o video (Canva, etc.)</label>
+  <input type="file" id="fondoInput" accept="image/*,video/*">
+  <button onclick="subirFondo()">Subir fondo</button>
+
+  <label style="margin-top:14px;">O elige una plantilla lista (sin subir nada)</label>
+  <div style="display:flex; gap:8px; flex-wrap:wrap;">
+    <button type="button" class="chica secundario" onclick="elegirPlantilla('solido')">Sólido</button>
+    <button type="button" class="chica secundario" onclick="elegirPlantilla('diagonal')">Diagonal</button>
+    <button type="button" class="chica secundario" onclick="elegirPlantilla('puntos')">Puntos</button>
+    <button type="button" class="chica secundario" onclick="elegirPlantilla('lineas')">Líneas</button>
+  </div>
+</section>
+
+<section>
+  <h2>Diseño / layout</h2>
+  <label>Estilo de las cajas de producto</label>
+  <select id="layoutSelect">
+    <option value="abajo3">Franja abajo, varias cajas chicas</option>
+    <option value="centro2">Pocas cajas, más grandes</option>
+  </select>
+  <label>Segundos por producto</label>
+  <input type="number" id="rotSeg" step="0.5" min="1" value="4">
+  <label>Productos visibles a la vez</label>
+  <input type="number" id="visCount" min="1" max="5" value="3">
+  <label>Tamaño de las cajas (% de la altura de pantalla)</label>
+  <input type="number" id="altoCaja" min="20" max="70" value="45">
+  <label>Color de las franjas (título, descripción, precio)</label>
+  <input type="color" id="colorAcento" value="#c81414" style="height:40px;">
+  <label>Color de las letras</label>
+  <input type="color" id="colorTexto" value="#ffffff" style="height:40px;">
+  <label style="display:flex; align-items:center; gap:8px; margin-top:12px;">
+    <input type="checkbox" id="mostrarQr" style="width:auto;">
+    Mostrar código QR en la pantalla (lleva al catálogo)
+  </label>
+  <button onclick="guardarAjustes()">Guardar ajustes</button>
+</section>
+
+<section>
+  <h2>Seguridad</h2>
+  <label>PIN para entrar a este panel (déjalo vacío para quitar la protección)</label>
+  <input type="text" id="nuevoPin" placeholder="Ej. 1234">
+  <button onclick="guardarPin()">Guardar PIN</button>
+</section>
+
+<section>
+  <h2 id="tituloForm">Agregar producto</h2>
+  <label>Foto del producto</label>
+  <input type="file" id="prodImg" accept="image/*">
+  <label>¿Cómo quieres usar la foto?</label>
+  <div style="display:flex; flex-direction:column; gap:6px; font-size:13px;">
+    <label style="display:flex; align-items:center; gap:6px; font-size:13px; margin:0;">
+      <input type="radio" name="modoImagen" value="normal" checked style="width:auto;" onchange="actualizarVisibilidadFondoRecorte()">
+      Tal y como la subo (llena todo el recuadro)
+    </label>
+    <label style="display:flex; align-items:center; gap:6px; font-size:13px; margin:0;">
+      <input type="radio" name="modoImagen" value="recorte" style="width:auto;" onchange="actualizarVisibilidadFondoRecorte()">
+      Recortar fondo automáticamente (IA, deja solo el producto)
+    </label>
+  </div>
+  <div id="fondoRecorteWrap" style="display:none; margin-top:8px;">
+    <label>Color de fondo detrás del producto recortado</label>
+    <input type="color" id="fondoRecorte" value="#ffffff" style="height:40px;">
+    <label>O una textura/imagen de fondo (opcional, tiene prioridad sobre el color)</label>
+    <input type="file" id="fondoRecorteImagen" accept="image/*">
+    <button type="button" class="chica peligro" onclick="document.getElementById('fondoRecorteImagen').value=''; quitarFondoRecorteImagen=true;">Quitar imagen de fondo</button>
+  </div>
+  <label>Título</label>
+  <input type="text" id="prodTitulo" placeholder="Ej. Costilla de res">
+  <label>Descripción</label>
+  <textarea id="prodDesc" placeholder="Ej. Carne jugosa y con excelente sabor..."></textarea>
+  <label>Precios</label>
+  <div id="preciosContainer"></div>
+  <button class="secundario" onclick="agregarFilaPrecio()">+ Agregar precio</button>
+  <br>
+
+  <label>Etiqueta especial (opcional, ej. OFERTA, 2X1, NUEVO)</label>
+  <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;">
+    <button type="button" class="chica secundario" onclick="ponerEtiqueta('OFERTA')">OFERTA</button>
+    <button type="button" class="chica secundario" onclick="ponerEtiqueta('2X1')">2X1</button>
+    <button type="button" class="chica secundario" onclick="ponerEtiqueta('NUEVO')">NUEVO</button>
+    <button type="button" class="chica secundario" onclick="ponerEtiqueta('¡HOY!')">¡HOY!</button>
+    <button type="button" class="chica peligro" onclick="ponerEtiqueta('')">Quitar</button>
+  </div>
+  <input type="text" id="prodEtiqueta" placeholder="Deja vacío si no quieres etiqueta">
+  <label>Color de la etiqueta</label>
+  <input type="color" id="prodEtiquetaColor" value="#ffcc00" style="height:40px;">
+  <button id="btnGuardarProducto" onclick="guardarProducto()">Agregar producto</button>
+  <button id="btnCancelarEdicion" class="secundario" onclick="cancelarEdicion()" style="display:none;">Cancelar edición</button>
+</section>
+
+<section>
+  <h2>Productos de esta pantalla</h2>
+  <div id="listaProductos"></div>
+</section>
+
+<div id="estado"></div>
+
+<script>
+let screenActual = 'principal';
+let productosCache = [];
+let editandoId = null;
+let quitarFondoRecorteImagen = false;
+let serverInfo = { ip: location.hostname, port: 5000 };
+
+async function cargarServerInfo() {
+  try {
+    const res = await fetch('/api/server-info');
+    serverInfo = await res.json();
+  } catch (e) { /* usa location.hostname como respaldo */ }
+}
+
+function actualizarLinkPantalla() {
+  const link = `http://${serverInfo.ip}:${serverInfo.port}/pantalla/${screenActual}`;
+  document.getElementById('linkPantalla').value = link;
+}
+
+function copiarLink() {
+  const input = document.getElementById('linkPantalla');
+  input.select();
+  navigator.clipboard?.writeText(input.value).then(() => estado('Link copiado')).catch(() => {
+    document.execCommand('copy');
+    estado('Link copiado');
+  });
+}
+
+// ---------- Login ----------
+async function checarLogin() {
+  const res = await fetch('/api/auth-status');
+  const data = await res.json();
+  if (data.requiere_password && !data.autenticado) {
+    document.getElementById('login').style.display = 'flex';
+    return false;
+  }
+  document.getElementById('login').style.display = 'none';
+  return true;
+}
+
+async function intentarLogin() {
+  const pin = document.getElementById('pinInput').value;
+  const res = await fetch('/api/login', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ password: pin })
+  });
+  if (res.ok) {
+    document.getElementById('login').style.display = 'none';
+    iniciarTodo();
+  } else {
+    document.getElementById('loginError').textContent = 'PIN incorrecto';
+  }
+}
+
+// ---------- Pantallas ----------
+async function cargarPantallas() {
+  const res = await fetch('/api/screens');
+  const screens = await res.json();
+  const sel = document.getElementById('selectorPantallas');
+  sel.innerHTML = '';
+  Object.entries(screens).forEach(([id, s]) => {
+    const opt = document.createElement('option');
+    opt.value = id; opt.textContent = s.nombre;
+    if (id === screenActual) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  if (!screens[screenActual]) screenActual = Object.keys(screens)[0];
+}
+
+function cambiarPantalla() {
+  screenActual = document.getElementById('selectorPantallas').value;
+  cancelarEdicion();
+  cargarTodoDeScreen();
+}
+
+async function crearPantalla() {
+  const nombre = prompt('Nombre de la nueva pantalla (ej. Entrada, Caja):');
+  if (!nombre) return;
+  const res = await fetch('/api/screens', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ nombre })
+  });
+  const nueva = await res.json();
+  screenActual = nueva.id;
+  await cargarPantallas();
+  cargarTodoDeScreen();
+  estado('Pantalla creada');
+}
+
+async function borrarPantallaActual() {
+  if (!confirm('¿Borrar esta pantalla y todos sus productos?')) return;
+  const res = await fetch(`/api/screens/${screenActual}`, { method:'DELETE' });
+  if (!res.ok) { estado('No se pudo borrar (debe existir al menos una pantalla)'); return; }
+  await cargarPantallas();
+  cargarTodoDeScreen();
+  estado('Pantalla borrada');
+}
+
+async function guardarNombrePantalla() {
+  const nombre = document.getElementById('nombrePantalla').value.trim();
+  if (!nombre) return;
+  await fetch(`/api/settings?screen=${screenActual}`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ nombre })
+  });
+  await cargarPantallas();
+  estado('Nombre guardado');
+}
+
+// ---------- Precios (form) ----------
+function agregarFilaPrecio(unidad='', precio='') {
+  const cont = document.getElementById('preciosContainer');
+  const fila = document.createElement('div');
+  fila.className = 'fila-precio';
+  fila.innerHTML = `
+    <input type="text" placeholder="unidad (ej. kilo)" class="unidad" value="${unidad}">
+    <input type="number" placeholder="precio" class="precio" value="${precio}">
+    <button class="peligro" onclick="this.parentElement.remove()">✕</button>
+  `;
+  cont.appendChild(fila);
+}
+
+function leerPrecios() {
+  const filas = document.querySelectorAll('#preciosContainer .fila-precio');
+  const precios = [];
+  filas.forEach(f => {
+    const unidad = f.querySelector('.unidad').value.trim();
+    const precio = f.querySelector('.precio').value;
+    if (unidad && precio) precios.push({ unidad, precio: Number(precio) });
+  });
+  return precios;
+}
+
+function estado(msg) {
+  document.getElementById('estado').textContent = msg;
+  setTimeout(() => document.getElementById('estado').textContent = '', 2500);
+}
+
+// ---------- Fondo / ajustes / pin ----------
+async function subirFondo() {
+  const input = document.getElementById('fondoInput');
+  if (!input.files[0]) { estado('Selecciona una imagen primero'); return; }
+  const fd = new FormData();
+  fd.append('image', input.files[0]);
+  await fetch(`/api/background?screen=${screenActual}`, { method:'POST', body: fd });
+  estado('Fondo actualizado');
+  refrescarPreview();
+}
+
+async function guardarAjustes() {
+  const rotation_seconds = document.getElementById('rotSeg').value;
+  const visible_count = document.getElementById('visCount').value;
+  const layout = document.getElementById('layoutSelect').value;
+  const alto_caja = document.getElementById('altoCaja').value;
+  const color_acento = document.getElementById('colorAcento').value;
+  const color_texto = document.getElementById('colorTexto').value;
+  const mostrar_qr = document.getElementById('mostrarQr').checked;
+  await fetch(`/api/settings?screen=${screenActual}`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ rotation_seconds, visible_count, layout, alto_caja, color_acento, color_texto, mostrar_qr })
+  });
+  estado('Ajustes guardados');
+  refrescarPreview();
+}
+
+async function elegirPlantilla(id) {
+  await fetch(`/api/settings?screen=${screenActual}`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ background_tipo: 'plantilla', plantilla_id: id })
+  });
+  estado('Plantilla aplicada');
+  refrescarPreview();
+}
+
+function ponerEtiqueta(texto) {
+  document.getElementById('prodEtiqueta').value = texto;
+}
+
+function actualizarVisibilidadFondoRecorte() {
+  const esRecorte = document.querySelector('input[name="modoImagen"]:checked').value === 'recorte';
+  document.getElementById('fondoRecorteWrap').style.display = esRecorte ? 'block' : 'none';
+}
+
+async function guardarPin() {
+  const password = document.getElementById('nuevoPin').value.trim();
+  await fetch('/api/set-password', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ password })
+  });
+  estado(password ? 'PIN activado' : 'PIN quitado');
+}
+
+// ---------- Productos ----------
+async function guardarProducto() {
+  const titulo = document.getElementById('prodTitulo').value.trim();
+  if (!titulo) { estado('Ponle un título al producto'); return; }
+  const precios = leerPrecios();
+  if (precios.length === 0) {
+    const seguir = confirm('No agregaste ningún precio: este producto se mostrará sin precio en la pantalla. ¿Continuar de todas formas?');
+    if (!seguir) return;
+  }
+  const fd = new FormData();
+  fd.append('titulo', titulo);
+  fd.append('descripcion', document.getElementById('prodDesc').value.trim());
+  fd.append('precios', JSON.stringify(precios));
+  fd.append('etiqueta', document.getElementById('prodEtiqueta').value.trim());
+  fd.append('etiqueta_color', document.getElementById('prodEtiquetaColor').value);
+  const modoImagen = document.querySelector('input[name="modoImagen"]:checked').value;
+  fd.append('modo_imagen', modoImagen);
+  fd.append('fondo_recorte', document.getElementById('fondoRecorte').value);
+  const fondoImg = document.getElementById('fondoRecorteImagen').files[0];
+  if (fondoImg) fd.append('fondo_recorte_imagen', fondoImg);
+  else if (quitarFondoRecorteImagen) fd.append('quitar_fondo_recorte_imagen', '1');
+  const img = document.getElementById('prodImg').files[0];
+  if (img) fd.append('image', img);
+
+  let resp;
+  if (editandoId) {
+    resp = await fetch(`/api/products/${editandoId}?screen=${screenActual}`, { method:'PUT', body: fd });
+  } else {
+    resp = await fetch(`/api/products?screen=${screenActual}`, { method:'POST', body: fd });
+  }
+  const resultado = await resp.json();
+  estado(resultado.aviso ? resultado.aviso : (editandoId ? 'Producto actualizado' : 'Producto agregado'));
+
+  quitarFondoRecorteImagen = false;
+  cancelarEdicion();
+  cargarLista();
+}
+
+function editarProducto(id) {
+  quitarFondoRecorteImagen = false;
+  const p = productosCache.find(x => x.id === id);
+  if (!p) return;
+  editandoId = id;
+  document.getElementById('prodTitulo').value = p.titulo || '';
+  document.getElementById('prodDesc').value = p.descripcion || '';
+  document.getElementById('preciosContainer').innerHTML = '';
+  (p.precios && p.precios.length ? p.precios : [{unidad:'kilo', precio:''}])
+    .forEach(pr => agregarFilaPrecio(pr.unidad, pr.precio));
+  const modoGuardado = p.image_modo === 'recorte' ? 'recorte' : 'normal';
+  document.querySelector(`input[name="modoImagen"][value="${modoGuardado}"]`).checked = true;
+  document.getElementById('fondoRecorte').value = p.fondo_recorte || '#ffffff';
+  document.getElementById('prodEtiqueta').value = p.etiqueta || '';
+  document.getElementById('prodEtiquetaColor').value = p.etiqueta_color || '#ffcc00';
+  actualizarVisibilidadFondoRecorte();
+  document.getElementById('tituloForm').textContent = 'Editando producto';
+  document.getElementById('btnGuardarProducto').textContent = 'Guardar cambios';
+  document.getElementById('btnCancelarEdicion').style.display = 'inline-block';
+  document.getElementById('tituloForm').scrollIntoView({ behavior:'smooth', block:'center' });
+}
+
+function cancelarEdicion() {
+  editandoId = null;
+  quitarFondoRecorteImagen = false;
+  document.getElementById('fondoRecorteImagen').value = '';
+  document.getElementById('prodTitulo').value = '';
+  document.getElementById('prodDesc').value = '';
+  document.getElementById('prodImg').value = '';
+  document.getElementById('preciosContainer').innerHTML = '';
+  agregarFilaPrecio('kilo', '');
+  document.querySelector('input[name="modoImagen"][value="normal"]').checked = true;
+  document.getElementById('fondoRecorte').value = '#ffffff';
+  document.getElementById('prodEtiqueta').value = '';
+  document.getElementById('prodEtiquetaColor').value = '#ffcc00';
+  actualizarVisibilidadFondoRecorte();
+  document.getElementById('tituloForm').textContent = 'Agregar producto';
+  document.getElementById('btnGuardarProducto').textContent = 'Agregar producto';
+  document.getElementById('btnCancelarEdicion').style.display = 'none';
+}
+
+async function borrarProducto(id) {
+  if (!confirm('¿Borrar este producto?')) return;
+  await fetch(`/api/products/${id}?screen=${screenActual}`, { method:'DELETE' });
+  if (editandoId === id) cancelarEdicion();
+  cargarLista();
+}
+
+async function pausarProducto(id) {
+  await fetch(`/api/products/${id}/toggle?screen=${screenActual}`, { method:'POST' });
+  cargarLista();
+}
+
+async function moverProducto(id, direccion) {
+  const idx = productosCache.findIndex(p => p.id === id);
+  const nuevoIdx = idx + direccion;
+  if (nuevoIdx < 0 || nuevoIdx >= productosCache.length) return;
+  const copia = [...productosCache];
+  [copia[idx], copia[nuevoIdx]] = [copia[nuevoIdx], copia[idx]];
+  productosCache = copia;
+  renderLista();
+  await fetch(`/api/products/reorder?screen=${screenActual}`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ orden: copia.map(p => p.id) })
+  });
+}
+
+async function cargarLista() {
+  const res = await fetch(`/api/full?screen=${screenActual}`);
+  const data = await res.json();
+  productosCache = data.products || [];
+  renderLista();
+}
+
+function formatearAntiguedad(isoFecha) {
+  if (!isoFecha) return '';
+  const fecha = new Date(isoFecha);
+  const dias = Math.floor((Date.now() - fecha.getTime()) / 86400000);
+  const fechaTxt = fecha.toLocaleDateString('es-MX', { day:'2-digit', month:'2-digit', year:'numeric' });
+  let hace;
+  if (dias <= 0) hace = 'hoy';
+  else if (dias === 1) hace = 'hace 1 día';
+  else hace = `hace ${dias} días`;
+  return `Agregado: ${fechaTxt} (${hace})`;
+}
+
+function renderLista() {
+  const cont = document.getElementById('listaProductos');
+  cont.innerHTML = '';
+  if (!productosCache.length) {
+    cont.innerHTML = '<p style="font-size:13px;color:#999;">Aún no hay productos.</p>';
+    return;
+  }
+  productosCache.forEach((p, i) => {
+    const preciosTxt = (p.precios || []).map(pr => `$${pr.precio}/${pr.unidad}`).join('  ');
+    const div = document.createElement('div');
+    div.className = 'producto' + (p.activo === false ? ' inactivo' : '');
+    div.innerHTML = `
+      <div class="orden">
+        <button class="chica secundario" ${i===0?'disabled':''} onclick="moverProducto('${p.id}', -1)">▲</button>
+        <button class="chica secundario" ${i===productosCache.length-1?'disabled':''} onclick="moverProducto('${p.id}', 1)">▼</button>
+      </div>
+      <img src="${p.image || ''}" onerror="this.style.opacity=0">
+      <div class="info">
+        <b>${p.titulo}</b>
+        <span>${preciosTxt}</span>
+        <span>${p.activo === false ? '(pausado)' : ''} ${p.etiqueta ? `🏷️ ${p.etiqueta}` : ''}</span>
+        <span style="color:#aaa;">${formatearAntiguedad(p.creado)}</span>
+      </div>
+      <div class="acciones">
+        <button class="chica" onclick="editarProducto('${p.id}')">Editar</button>
+        <button class="chica secundario" onclick="pausarProducto('${p.id}')">${p.activo === false ? 'Activar' : 'Pausar'}</button>
+        <button class="chica peligro" onclick="borrarProducto('${p.id}')">Borrar</button>
+      </div>
+    `;
+    cont.appendChild(div);
+  });
+}
+
+// ---------- Vista previa / carga de pantalla ----------
+function refrescarPreview() {
+  document.getElementById('previewFrame').src = `/pantalla/${screenActual}?t=${Date.now()}`;
+}
+
+async function cargarTodoDeScreen() {
+  const res = await fetch(`/api/full?screen=${screenActual}`);
+  const data = res.ok ? await res.json() : await (await fetch(`/api/data?screen=${screenActual}`)).json();
+  document.getElementById('nombrePantalla').value = data.nombre || '';
+  document.getElementById('rotSeg').value = data.rotation_seconds || 4;
+  document.getElementById('visCount').value = data.visible_count || 3;
+  document.getElementById('layoutSelect').value = data.layout || 'abajo3';
+  document.getElementById('altoCaja').value = data.alto_caja || 45;
+  document.getElementById('colorAcento').value = data.color_acento || '#c81414';
+  document.getElementById('colorTexto').value = data.color_texto || '#ffffff';
+  document.getElementById('mostrarQr').checked = !!data.mostrar_qr;
+  actualizarLinkPantalla();
+  cargarLista();
+  refrescarPreview();
+}
+
+async function iniciarTodo() {
+  await cargarServerInfo();
+  await cargarPantallas();
+  await cargarTodoDeScreen();
+}
+
+(async () => {
+  const ok = await checarLogin();
+  if (ok) iniciarTodo();
+})();
+</script>
+</body>
+</html>

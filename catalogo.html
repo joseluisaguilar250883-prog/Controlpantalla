@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ nombre_negocio or 'Catálogo' }}</title>
+<style>
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Arial, sans-serif; background:#f4f4f4; color:#222; padding-bottom:30px; }
+  header { background:#111; color:#fff; padding:20px 16px; text-align:center; }
+  header h1 { margin:0; font-size:20px; }
+  header p { margin:4px 0 0; font-size:13px; color:#ccc; }
+  .producto {
+    background:#fff; margin:12px; border-radius:10px; overflow:hidden;
+    box-shadow:0 1px 6px rgba(0,0,0,.12); border-top:4px solid {{ color_acento }};
+  }
+  .producto img { width:100%; height:180px; object-fit:cover; display:block; background:#eee; }
+  .producto .cuerpo { padding:12px 14px; }
+  .producto .titulo { font-size:17px; font-weight:bold; margin:0 0 4px; text-transform:uppercase; }
+  .producto .descripcion { font-size:13px; color:#555; margin:0 0 8px; }
+  .producto .precios { display:flex; gap:10px; flex-wrap:wrap; }
+  .producto .precios .item {
+    background:{{ color_acento }}; color:#fff; border-radius:6px; padding:6px 10px; font-size:14px; font-weight:bold;
+  }
+  .vacio { text-align:center; color:#999; padding:40px 20px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>{{ nombre_negocio or 'Catálogo' }}</h1>
+  <p>{{ nombre_pantalla }}</p>
+</header>
+
+{% if productos %}
+  {% for p in productos %}
+  <div class="producto">
+    {% if p.image %}<img src="{{ p.image }}">{% endif %}
+    <div class="cuerpo">
+      <p class="titulo">{{ p.titulo }}</p>
+      {% if p.descripcion %}<p class="descripcion">{{ p.descripcion }}</p>{% endif %}
+      <div class="precios">
+        {% for pr in p.precios %}
+          <div class="item">${{ pr.precio }} /{{ pr.unidad }}</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+{% else %}
+  <div class="vacio">Aún no hay productos publicados.</div>
+{% endif %}
+</body>
+</html>
