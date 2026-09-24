@@ -169,8 +169,9 @@ def catalogo(screen_id):
 @app.route("/api/qr")
 def api_qr():
     screen_id = request.args.get("screen", "principal")
-    ip = get_local_ip()
-    url = f"http://{ip}:5000/catalogo/{screen_id}"
+    # Usa la URL completa actual que está accediendo el usuario
+    base_url = request.host_url.rstrip("/")
+    url = f"{base_url}/catalogo/{screen_id}"
     try:
         import qrcode
         from io import BytesIO
@@ -186,16 +187,15 @@ def api_qr():
 
 @app.route("/")
 def home():
-    ip = get_local_ip()
     data = load_data()
     filas = "".join(
         f"<li>{s.get('nombre', sid)}: "
-        f"<a href='http://{ip}:5000/pantalla/{sid}'>http://{ip}:5000/pantalla/{sid}</a></li>"
+        f"<a href='/pantalla/{sid}'>/pantalla/{sid}</a></li>"
         for sid, s in data["screens"].items()
     )
     return (
         f"<h2>Catalogo Digital</h2>"
-        f"<p>Control (celular): <a href='http://{ip}:5000/control'>http://{ip}:5000/control</a></p>"
+        f"<p>Control (celular): <a href='/control'>/control</a></p>"
         f"<p>Pantallas:</p><ul>{filas}</ul>"
     )
 
@@ -233,7 +233,8 @@ def api_set_password():
 
 @app.route("/api/server-info")
 def api_server_info():
-    return jsonify({"ip": get_local_ip(), "port": 5000})
+    port = int(os.environ.get("PORT", 5000))
+    return jsonify({"ip": get_local_ip(), "port": port})
 
 
 @app.route("/api/screens")
@@ -516,10 +517,5 @@ def api_reorder_products():
 
 
 if __name__ == "__main__":
-    ip = get_local_ip()
-    print("=" * 50)
-    print("Catalogo Digital - Servidor iniciado")
-    print(f"Control (celular): http://{ip}:5000/control")
-    print(f"Pantalla principal: http://{ip}:5000/pantalla/principal")
-    print("=" * 50)
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
